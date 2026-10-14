@@ -26,6 +26,13 @@ The app is ad-hoc signed, not notarized, so macOS blocks the first launch. Open 
 ./build.sh dmg    # also build/TransferSpeed-<version>.dmg
 ```
 
+With a **Developer ID Application** certificate in the keychain, the app and DMG are signed with it (hardened runtime, secure timestamp); otherwise they are signed ad-hoc. To also notarize and staple the DMG, store credentials once and pass the profile name:
+
+```bash
+xcrun notarytool store-credentials TransferSpeed --apple-id <apple-id> --team-id <team-id>
+NOTARY_PROFILE=TransferSpeed ./build.sh dmg
+```
+
 Other commands:
 
 ```bash
