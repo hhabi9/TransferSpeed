@@ -13,13 +13,18 @@ Native macOS (SwiftUI) tool for measuring file transfer speed. Requires macOS 15
 - Live speed is a 1-second sliding window; final numbers are total bytes ÷ total time.
 - Speeds are decimal MB/s (1 MB = 1,000,000 bytes), like drive spec sheets and most disk tools.
 
+## Install
+
+Download the `.dmg` from [Releases](../../releases), open it, and drag **Transfer Speed** to Applications. Universal build: runs on Apple Silicon and Intel.
+
+The app is ad-hoc signed, not notarized, so macOS blocks the first launch. Open it once, then go to **System Settings → Privacy & Security** and click **Open Anyway**.
+
 ## Build
 
 ```bash
-./build.sh
+./build.sh        # build/Transfer Speed.app
+./build.sh dmg    # also build/TransferSpeed-<version>.dmg
 ```
-
-Output: `build/Transfer Speed.app` (ad-hoc signed). Drag it to `/Applications`.
 
 Other commands:
 
