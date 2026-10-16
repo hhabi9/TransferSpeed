@@ -4,6 +4,8 @@ struct BenchmarkTarget: Identifiable, Hashable {
     let url: URL
     let name: String
     let symbol: String
+    /// Drive roots sit outside the sandbox until the user grants access in an open panel.
+    var needsGrant = false
     var id: URL { url }
 
     static func mountedVolumes() -> [BenchmarkTarget] {
@@ -21,8 +23,37 @@ struct BenchmarkTarget: Identifiable, Hashable {
             }
             if values.volumeIsReadOnly == true { return nil }
             let symbol = values.volumeIsLocal == false ? "network" : values.volumeIsInternal == true ? "internaldrive" : "externaldrive"
-            return BenchmarkTarget(url: url, name: name, symbol: symbol)
+            return BenchmarkTarget(url: url, name: name, symbol: symbol, needsGrant: true)
         }
+    }
+}
+
+/// Security-scoped bookmarks to the folder the user granted on each drive, so the grant survives relaunch.
+struct FolderGrants {
+    static let key = "FolderGrants"
+    var defaults = UserDefaults.standard
+
+    /// The granted folder on the drive mounted at `volume`, if its bookmark still resolves to that drive.
+    func folder(on volume: URL) -> URL? {
+        guard let data = (defaults.dictionary(forKey: Self.key) as? [String: Data])?[volume.path] else { return nil }
+        var isStale = false
+        guard let folder = try? URL(
+            resolvingBookmarkData: data,
+            options: [.withSecurityScope, .withoutUI, .withoutMounting],
+            bookmarkDataIsStale: &isStale
+        ), (try? folder.resourceValues(forKeys: [.volumeURLKey]))?.volume?.path == volume.path else { return nil }
+        if isStale, folder.startAccessingSecurityScopedResource() {
+            save(folder, for: volume)
+            folder.stopAccessingSecurityScopedResource()
+        }
+        return folder
+    }
+
+    func save(_ folder: URL, for volume: URL) {
+        guard let data = try? folder.bookmarkData(options: .withSecurityScope) else { return }
+        var grants = defaults.dictionary(forKey: Self.key) ?? [:]
+        grants[volume.path] = data
+        defaults.set(grants, forKey: Self.key)
     }
 }
 
@@ -31,6 +62,7 @@ struct BenchmarkView: View {
     @State private var volumes = BenchmarkTarget.mountedVolumes()
     @State private var folders: [BenchmarkTarget] = []
 
+    private let grants = FolderGrants()
     private let workspace = NSWorkspace.shared.notificationCenter
 
     var body: some View {
@@ -96,7 +128,7 @@ struct BenchmarkView: View {
                 .controlSize(.large)
                 .keyboardShortcut(.cancelAction)
         } else {
-            Button { job.start() } label: {
+            Button(action: startTest) {
                 Label("Start Test", systemImage: "play.fill")
             }
             .buttonStyle(.borderedProminent)
@@ -120,6 +152,21 @@ struct BenchmarkView: View {
         default:
             Text("Writes a \(job.testSize.label) test file with caching off, flushes it to the device, reads it back, then deletes it.")
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    private func startTest() {
+        guard let target = (volumes + folders).first(where: { $0.url == job.target }) else { return }
+        guard target.needsGrant else { return job.start(in: target.url) }
+        if let folder = grants.folder(on: target.url) {
+            job.start(in: folder)
+        } else if let folder = Panels.chooseFolder(
+            message: "Transfer Speed needs your permission to write a test file on “\(target.name)”. Click Allow to test this drive.",
+            in: target.url,
+            prompt: "Allow"
+        ) {
+            grants.save(folder, for: target.url)
+            job.start(in: folder)
         }
     }
 

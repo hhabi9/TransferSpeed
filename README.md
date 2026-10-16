@@ -2,9 +2,11 @@
 
 Native macOS (SwiftUI) tool for measuring file transfer speed. Requires macOS 15+.
 
-**Copy** — pick or drop files/folders and a destination. Copies them while showing live MB/s, a speed graph, progress, ETA, average and peak. Never overwrites: stops if an item with the same name already exists. Preserves permissions, timestamps, extended attributes and symlinks.
+**Copy** — pick or drop files/folders and a destination. Copies them while showing live MB/s, a speed graph, progress, ETA, average and peak. Never overwrites: stops if an item with the same name already exists. Preserves permissions, timestamps, extended attributes and symlinks (macOS also marks every copy with a quarantine attribute, as it does for all files sandboxed apps write).
 
 **Benchmark** — pick a drive (internal, USB, Thunderbolt, mounted SMB/AFP/NFS share) or any folder. Writes a 1–10 GB test file, flushes it to the device, reads it back, deletes it, and reports sequential write/read speed.
+
+The app is sandboxed: it only touches files and folders you pick or drop on it. The first test of an external or network drive asks, once, for permission to write to it.
 
 ## How it measures
 
@@ -22,8 +24,9 @@ The app is ad-hoc signed, not notarized, so macOS blocks the first launch. Open 
 ## Build
 
 ```bash
-./build.sh        # build/Transfer Speed.app
-./build.sh dmg    # also build/TransferSpeed-<version>.dmg
+./build.sh                    # build/Transfer Speed.app
+./build.sh dmg                # also build/TransferSpeed-<version>.dmg
+./build.sh mas <profile>      # Mac App Store package build/TransferSpeed-<version>.pkg
 ```
 
 With a **Developer ID Application** certificate in the keychain, the app and DMG are signed with it (hardened runtime, secure timestamp); otherwise they are signed ad-hoc. To also notarize and staple the DMG, store credentials once and pass the profile name:
@@ -32,6 +35,8 @@ With a **Developer ID Application** certificate in the keychain, the app and DMG
 xcrun notarytool store-credentials TransferSpeed --apple-id <apple-id> --team-id <team-id>
 NOTARY_PROFILE=TransferSpeed ./build.sh dmg
 ```
+
+For the Mac App Store build and the remaining account-side steps, see [docs/APP_STORE.md](docs/APP_STORE.md).
 
 Other commands:
 

@@ -91,6 +91,24 @@ import Testing
         #expect(!FileManager.default.fileExists(atPath: file.path))
     }
 
+    @Test func folderGrantsResolveOnlyOnTheirDrive() throws {
+        let suite = "TransferSpeedTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let grants = FolderGrants(defaults: defaults)
+        let folder = root.appending(path: "granted")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let drive = try #require(try folder.resourceValues(forKeys: [.volumeURLKey]).volume)
+
+        #expect(grants.folder(on: drive) == nil)
+        grants.save(folder, for: drive)
+        #expect(grants.folder(on: drive)?.resolvingSymlinksInPath() == folder.resolvingSymlinksInPath())
+
+        let otherDrive = URL(filePath: "/Volumes/Other-\(UUID().uuidString)")
+        grants.save(folder, for: otherDrive)
+        #expect(grants.folder(on: otherDrive) == nil)
+    }
+
     @MainActor @Test func copyJobRunsToCompletion() async throws {
         let source = root.appending(path: "movie.bin")
         let data = try makeFile(source, size: 64 << 20)
