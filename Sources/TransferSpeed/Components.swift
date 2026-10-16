@@ -212,13 +212,14 @@ enum Panels {
         return panel.runModal() == .OK ? panel.urls : nil
     }
 
-    static func chooseFolder(message: String) -> URL? {
+    static func chooseFolder(message: String, in directory: URL? = nil, prompt: String = "Choose") -> URL? {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.canCreateDirectories = true
+        panel.directoryURL = directory
         panel.message = message
-        panel.prompt = "Choose"
+        panel.prompt = prompt
         return panel.runModal() == .OK ? panel.url : nil
     }
 }

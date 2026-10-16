@@ -166,11 +166,11 @@ final class BenchmarkJob {
 
     var isRunning: Bool { [.preparing, .writing, .reading].contains(state) }
 
-    func start() {
-        guard let target, !isRunning else { return }
+    func start(in folder: URL) {
+        guard !isRunning else { return }
         let control = TransferControl()
         let size = testSize.bytes
-        let file = BenchmarkEngine.testFileURL(in: target)
+        let file = BenchmarkEngine.testFileURL(in: folder)
         self.control = control
         writeSpeed = nil
         readSpeed = nil
@@ -180,8 +180,10 @@ final class BenchmarkJob {
         state = .preparing
 
         Task {
+            let scoped = folder.startAccessingSecurityScopedResource()
+            defer { if scoped { folder.stopAccessingSecurityScopedResource() } }
             do {
-                try await runInBackground { try BenchmarkEngine.checkSpace(in: target, needed: size) }
+                try await runInBackground { try BenchmarkEngine.checkSpace(in: folder, needed: size) }
                 state = .writing
                 writeSpeed = try await measure("Write", total: size, control: control) {
                     try BenchmarkEngine.write(file, size: size, control: control)
